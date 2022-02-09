@@ -28,8 +28,20 @@
   - 0.8版本之后实现，读写数据操作均在leader partition
   - follower partition从leader partition同步数据
   - leader partition会维护ISR（in sync replica）列表
+  - follower超过10s没有向leader拉取数据，会从ISR中移除
 
+- 消费者组
+  - 组中负载均衡
+  - 自动感知
+  - 消费者，消费的位置offset，保存在一个_consumer_offsets主题中，50个分区，其中key为GTP，value为offset值，隔段时间会合并，保持最新offset数据，50个分区抗住高并发请求
 
+消费者感知
+
+heartbeat.interval.ms 消费者与coordinator之间心跳，例3s
+
+session.timeout.ms kafka对消费者感知 默认10s
+
+max.poll.interval.ms 两次拉取之间间隔，超过该值则会被剔除，例5s
 
 topic--partition  每个分区有leader和follower
 
@@ -45,7 +57,33 @@ topic--partition  每个分区有leader和follower
 
 zk确定leader和follower
 
+- 消费者实现rebalance
 
+  - 每个消费者组选择一个broker为coordinator，感知组中心跳，判断宕机，启动rebalance
+  - coordinator机器，groupID先hash，再与_consumer_offsets分区数取模，得到其分区号所在的broker
+
+  1. 组中每个consumer发送JoinGroup请求至Coordinator
+  2. Coordinator选择一个consumer为leader
+  3. 把consumer_group情况发送给leader
+  4. leader制定消费方案
+  5. leader通过SyncGroup发送给Coordinator
+  6. Coordinator把方案发送各个consumer，然后从指定分区开发消费数据
+
+- rebalance分区策略
+
+  - range 范围
+  - round-robin 轮询
+    - 上述方案，再分配会导致已有分区重新划分
+  - sticky
+    - 黏性分区，再分配保证已有分区不被打乱
+
+
+
+### broker内部概念
+
+LEO：log end offset最新offset + 1 ，LEO用于更新HW
+
+HW：高水位，之前的对对消费者可见
 
 消费者获取数据 offset 是以GTP，group-topic-partition方式维护
 
@@ -89,7 +127,8 @@ log达到分片大小，会创建新的log，同时命令以log对应的offset�
   - 指定p
   - 没指定p有k，k的hash与分区数取余
   - 没有指定k和p，则黏性分区
-
+  - 说明：根据业务关键字，指定对应key，能够保证数据在对应分区内的顺序
+  
   ```
    * The default partitioning strategy:
    * <ul>
@@ -97,14 +136,14 @@ log达到分片大小，会创建新的log，同时命令以log对应的offset�
    * <li>If no partition is specified but a key is present choose a partition based on a hash of the key
    * <li>If no partition or key is present choose the sticky partition that changes when the batch is full.
   ```
-
+  
   通过key取余分区
-
+  
   ```
           // hash the keyBytes to choose a partition
           return Utils.toPositive(Utils.murmur2(keyBytes)) % numPartitions
   ```
-
+  
   生产者发送数据可靠性保证 ack (acknowledgement 确认收到)
 
 ## 性能优势
@@ -210,7 +249,50 @@ num.partitions=1
 log.retention.hours=168
 ```
 
+集群搭建完成后需压力测试，kafka运维管理可用kafka-manager
 
+
+
+### 提高吞吐率
+
+参数设置
+
+- buffer.memory 缓冲区大小 默认32M
+- compression.type压缩类型 默认none，可选lz4，提高吞吐，加大生产者CPU开销
+- batch.size小频繁网络请求，大缓冲区压力，默认16k，生产环境可据实际情况提高，配合linger.ms使用，默认是0，可以设置100ms，满足容量和时间条件之一即可发送
+
+
+
+### 一些问题说明
+
+- 消息重复
+  - leader切换，重试导致消息重复
+- 消息乱序
+  - 前面的消息发送失败重试导致，设置max.in.flight.requests.per.connection参数设置为1，保证同一时间只能发一条消息
+  - 可以设置重试时间间隔，默认100ms，retry.backoff.ms
+  - 开发中，重试可解决大多数问题
+
+
+
+### producer端设置
+
+request.required.ack
+
+- 0 只管发送，性能好
+- 1 需leader写入成功，可能丢数据
+- -1 需ISR中所有副本写入成功
+
+kafka服务端
+
+min.insync.replicas，默认1，参数限制ISR列表中副本数，当实际副本数，小于设置值再往对应分区写数据会报错
+
+
+
+不丢数据方案：
+
+1. 分区副本 >= 2
+2. ack = -1
+3.  min.insync.replicas >= 2
 
 ## kafka安装
 
