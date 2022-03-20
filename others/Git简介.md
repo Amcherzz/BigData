@@ -400,5 +400,8 @@ git mv file_from file_to
 
 git branch --merged
 git branch -d branchname  # 删除分支
+
+# 查看git remote
+git remote -vv
 ```
 
