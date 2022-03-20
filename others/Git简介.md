@@ -229,3 +229,176 @@ beyond compare
 ### git flow 工作流
 
 dev（某个功能模块） --> review --> release --> master
+
+
+
+
+
+## 补充内容
+
+- 检查安装是否成功
+
+  ```
+  git --version
+  ```
+
+- git 配置
+
+  ```
+     1.local，针对当前仓库的配置，git配置默认为local级别
+        git config [--local] user.name 本仓库的用户名
+        git config [--local] user.email 本仓库的用户邮箱
+     2.global，针对当前系统用户的仓库
+        git config --global user.name
+        git config --global user.email
+     3.system，针对当前操作系统所有用户的仓库。（该级别通常不用于配置用户信息）
+        git config --system user.name
+        git config --system user.email
+  ```
+
+  
+
+- 查看git配置
+
+  ```
+  查看配置:
+  
+  git config --list --local       ##只能在仓库里面起作用, 普通路径git不管理  
+  git config --list --global    
+  git config --list --system   
+  ```
+
+  
+
+- 提交  工作区  --> 暂存区 --> 仓库
+
+  ```
+  git add -u  添加追踪的文件到暂存区
+  git add . 添加所有文件
+  ```
+
+- 常用的命令
+
+  ```
+  # 重命名文件
+   git mv readme readme.md 
+  ```
+
+  相当于
+
+  mv readme readme.md 删除文件readme  创建新文件readme.md 
+
+  git add readme.md 添加到暂存区 
+
+  git rm readme 将原来的文件删除掉
+
+- 日志常用
+
+  ```
+  # 查看所有分支的历史
+  git log --all 
+  # 查看图形化的 log 地址
+  git log --all --graph 
+  # 查看单行的简洁历史。
+  git log --oneline 
+  # 查看最近的四条简洁历史。
+  git log --oneline -n4 
+  # 查看所有分支最近 4 条单行的图形化历史。
+  git log --oneline --all -n4 --graph 
+  # 跳转到git log 的帮助文档网页
+  git help --web log 
+  # 帮助日志
+  git help --web log
+  ```
+
+- gitk 图形化界面
+
+- 切换分支
+
+  ```
+  # 切换分支命令
+  git checkout 分支名称
+  ```
+
+  
+
+### git文件目录
+
+- COMMIT_EDITMSG
+- config               当前 git 的配置文件
+- description      （仓库的描述信息文件）
+- HEAD             （指向当前所在的分支），例如当前在 develop 分支，实际指向地址是 refs/heads/develop
+- hooks [文件夹]
+- index
+- info [文件夹]
+- logs [文件夹]
+- objects [文件夹]    （存放所有的 git 对象，对象哈希值前 2 位作为文件夹名称，后 38 位作为对象文件名, 可通过 git cat-file -p 命令，拼接文件夹名称+文件名查看）
+- ORIG_HEAD
+- refs [文件夹] 
+  - heads  （存放当前项目的所有分支）
+  - ags      (存放的当前项目的所有标签，又叫做里程碑)
+- 
+- cat 命令， 功能：用来显示文件。 例如 cat text.md 显示 text.md 文件的内容
+- ls -al 命令， 表示列出当前目录下的所有文件（包括隐藏文件）
+- git cat-file -t 命令 ， 查看 git 对象的类型
+- git cat-file -p 命令， 查看 git 对象的内容
+- git cat-file -s 命令， 查看 git 对象的大小
+
+
+
+分支使用
+
+git checkout [-b]
+
+-b 创建并切换至分支
+
+git checkout
+
+
+
+```
+git rebase
+# 让代码提交变简洁  多个提交记录整合成一个
+# 注意不要rebase 远程创库已有版本
+```
+
+- git rebase
+  - 让代码提交变简洁  多个提交记录整合成一个
+  - 注意不要rebase 远程创库已有版本
+  - 让分支简洁，多个提交记录合并
+- git merge和git rebase区别，后者简洁
+
+如果拉远程代码有冲突会产生分叉
+
+git pull 改为 git fetch origin/master  -> git rebase origin/master
+
+
+
+git rebase 产生冲突怎么办
+
+-> 解决冲突  -> git add .  -> git rebase --continue
+
+
+
+**rebase 会合并commit 信息，注意所操作范围没有被push到远程代码仓库**
+
+
+
+```
+git commit --amend 
+# 更改最后提交记录 会重新生成 SHA-1值
+# ** 不要在push之后再进行操作**
+
+# 合并commit
+git rebase -i HEAD~3
+
+git rm --cached filename  # untrace a file 
+git rm filename  #会删除文件
+
+# 更改文件名
+git mv file_from file_to 
+
+git branch --merged
+git branch -d branchname  # 删除分支
+```
+
